@@ -8,6 +8,8 @@ public:
 
     bool Create();
 
+    void Resize(int parentWidth, int parentHeight) const;
+
 private:
     HWND hwndParent;
     HWND hwndListView;

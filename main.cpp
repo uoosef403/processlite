@@ -36,14 +36,6 @@ public:
             return false;
         }
 
-        // Initialize controls
-        listViewManager = std::make_unique<ListViewManager>(hwnd);
-        buttonManager = std::make_unique<ButtonManager>(hwnd);
-
-        if (!listViewManager->Create() || !buttonManager->Create()) {
-            return false;
-        }
-
         return true;
     }
 
@@ -107,12 +99,31 @@ private:
                 EndPaint(hwnd, &ps);
                 return 0;
             }
+            case WM_CREATE: {
+                // Initialize controls
+                listViewManager = std::make_unique<ListViewManager>(hwnd);
+                buttonManager = std::make_unique<ButtonManager>(hwnd);
+
+                if (!listViewManager->Create() || !buttonManager->Create()) {
+                    MessageBoxW(hwnd, L"Something went wrong!", L"ERROR", MB_ICONERROR);
+                    PostQuitMessage(0);
+                }
+                return 0;
+            }
+            case WM_SIZE:
+                if (listViewManager) {
+                    listViewManager->Resize(LOWORD(lParam), HIWORD(lParam));
+                }
+                if (buttonManager) {
+                    buttonManager->Resize(LOWORD(lParam), HIWORD(lParam));
+                }
+                return 0;
             case WM_DESTROY:
                 PostQuitMessage(0);
                 return 0;
             case WM_COMMAND:
                 this->onCommand(wParam);
-            return 0;
+                return 0;
             default:
                 return DefWindowProcW(hwnd, msg, wParam, lParam);
         }
