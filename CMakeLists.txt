@@ -14,3 +14,5 @@ add_executable(untitled3 WIN32 main.cpp resource.h ${SOURCE_FILES})
 target_include_directories(untitled3 PRIVATE source)
 
 target_sources(untitled3 PRIVATE app.ico resources.rc resource.h app.manifest)
+
+target_link_libraries(untitled3 PRIVATE psapi.lib shlwapi.lib pdh.lib comctl32.lib)

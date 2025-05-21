@@ -4,9 +4,10 @@
 
 class ButtonManager {
 public:
-    explicit ButtonManager(const HWND hwndParent) : hwndParent(hwndParent), hwndButtonClose(nullptr),
-                                                    hwndButtonNew(nullptr),
-                                                    hwndButtonKill(nullptr) {
+    explicit ButtonManager(const HWND hwndParent)
+        : hwnd_parent_(hwndParent), hwnd_button_close_(nullptr),
+          hwnd_button_new_(nullptr),
+          hwnd_button_kill_(nullptr) {
     }
 
     bool Create();
@@ -16,10 +17,10 @@ public:
     void Resize(int parentWidth, int parentHeight) const;
 
 private:
-    HWND hwndParent;
-    HWND hwndButtonClose;
-    HWND hwndButtonNew;
-    HWND hwndButtonKill;
+    HWND hwnd_parent_;
+    HWND hwnd_button_close_;
+    HWND hwnd_button_new_;
+    HWND hwnd_button_kill_;
 };
 
 #endif
