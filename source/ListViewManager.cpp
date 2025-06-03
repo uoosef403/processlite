@@ -23,6 +23,9 @@ bool ListViewManager::Create() {
         return false;
     }
 
+    ListView_SetExtendedListViewStyle(hwnd_list_view_,
+    LVS_EX_FULLROWSELECT | LVS_EX_LABELTIP | LVS_EX_DOUBLEBUFFER);
+
     // Initialize the list view
     LVCOLUMNW pNameClm = {};
     pNameClm.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
@@ -82,6 +85,14 @@ HWND ListViewManager::getHWND() const {
     return hwnd_list_view_;
 }
 
+void ListViewManager::setSelectedPID(const DWORD pid) {
+    selected_pid_.exchange(pid);
+}
+
+DWORD ListViewManager::getSelectedPID() const {
+    return selected_pid_.load();
+};
+
 void ListViewManager::Resize(const int parentWidth, const int parentHeight) const {
     // Optional padding
     constexpr auto padding = 10;
@@ -118,6 +129,21 @@ void ListViewManager::applyListViewUpdates(ProcessUpdateData* updateData) {
     // Improve performance by temporarily disabling redraw
     SendMessageW(hwnd_list_view_, WM_SETREDRAW, FALSE, 0);
 
+    // keep the selected pid before update
+    int selectedIndex = ListView_GetNextItem(hwnd_list_view_, -1, LVNI_SELECTED);
+    DWORD selectedPid = 0;
+    if (selectedIndex != -1) {
+        LVITEMW lvi = {};
+        lvi.iItem = selectedIndex;
+        lvi.mask = LVIF_PARAM;
+        if (ListView_GetItem(hwnd_list_view_, &lvi)) {
+            selectedPid = static_cast<DWORD>(lvi.lParam);
+        }
+    }
+    if (selectedPid != 0) {
+        setSelectedPID(selectedPid);
+    }
+
     // Get current item count for finding items
     unsigned long itemCount = ListView_GetItemCount(hwnd_list_view_);
     std::vector<DWORD> pidsInList(itemCount);
@@ -142,6 +168,9 @@ void ListViewManager::applyListViewUpdates(ProcessUpdateData* updateData) {
                 pidsInList.erase(pidsInList.begin() + i);
                 break;
             }
+        }
+        if (selectedPid != 0 && selectedPid == removedPid) {
+            setSelectedPID(0);
         }
     }
 

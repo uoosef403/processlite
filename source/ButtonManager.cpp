@@ -29,12 +29,6 @@ bool ButtonManager::Create() {
     return hwnd_button_close_ != nullptr;
 }
 
-void ButtonManager::OnCommand(const WPARAM wParam) {
-    if (LOWORD(wParam) == 3) { // Close button clicked
-        PostQuitMessage(0);
-    }
-}
-
 void ButtonManager::Resize(const int parentWidth, const int parentHeight) const {
     constexpr int padding = 10;
     constexpr int buttonWidth = 100;

@@ -6,12 +6,10 @@
 
 using namespace std::chrono;
 
-// ---------------------------------------------------------------------------
-// helpers
-// ---------------------------------------------------------------------------
+
 uint64_t ProcessMetrics::FileTimeToUint(const FILETIME& ft)
 {
-    ULARGE_INTEGER ui{ ft.dwLowDateTime, ft.dwHighDateTime };
+    const ULARGE_INTEGER ui{ ft.dwLowDateTime, ft.dwHighDateTime };
     return ui.QuadPart;
 }
 
@@ -22,13 +20,13 @@ uint32_t ProcessMetrics::NumProcessors()
     return n;
 }
 
-size_t ProcessMetrics::IoRate(uint64_t cur, uint64_t& prevBytes, FILETIME& prevWall)
+size_t ProcessMetrics::IoRate(const uint64_t cur, uint64_t& prevBytes, FILETIME& prevWall)
 {
     FILETIME nowFt;  GetSystemTimeAsFileTime(&nowFt);
-    uint64_t now = FileTimeToUint(nowFt);
+    const uint64_t now = FileTimeToUint(nowFt);
 
-    uint64_t wallDelta  = now - FileTimeToUint(prevWall);
-    uint64_t byteDelta  = cur - prevBytes;
+    const uint64_t wallDelta  = now - FileTimeToUint(prevWall);
+    const uint64_t byteDelta  = cur - prevBytes;
 
     prevWall  = nowFt;
     prevBytes = cur;
@@ -37,13 +35,10 @@ size_t ProcessMetrics::IoRate(uint64_t cur, uint64_t& prevBytes, FILETIME& prevW
     return static_cast<size_t>((byteDelta * 10'000'000ULL) / wallDelta);
 }
 
-// ---------------------------------------------------------------------------
-// ctor / dtor
-// ---------------------------------------------------------------------------
 ProcessMetrics::~ProcessMetrics()
 {
     std::scoped_lock lk(mtx_);
-    for (auto &s: map_ | std::views::values)
+    for (const auto &s: map_ | std::views::values)
         if (s.hProcess) CloseHandle(s.hProcess);
 }
 
@@ -72,10 +67,10 @@ bool ProcessMetrics::AddProcess(DWORD pid)
     return true;
 }
 
-void ProcessMetrics::RemoveProcess(DWORD pid)
+void ProcessMetrics::RemoveProcess(const DWORD pid)
 {
     std::scoped_lock lk(mtx_);
-    if (auto it = map_.find(pid); it != map_.end())
+    if (const auto it = map_.find(pid); it != map_.end())
     {
         if (it->second.hProcess) CloseHandle(it->second.hProcess);
         map_.erase(it);
@@ -89,7 +84,7 @@ void ProcessMetrics::RefreshAllData()
 
     for (auto it = map_.begin(); it != map_.end(); )
     {
-        Snapshot& s = it->second;
+        const Snapshot& s = it->second;
         FILETIME c,e,k,u;
         IO_COUNTERS io;
 
@@ -106,7 +101,7 @@ void ProcessMetrics::RefreshAllData()
     }
 }
 
-std::optional<double> ProcessMetrics::GetCpuUsage(DWORD pid)
+std::optional<double> ProcessMetrics::GetCpuUsage(const DWORD pid)
 {
     std::scoped_lock lk(mtx_);
     Snapshot& s = Ensure(pid);
@@ -117,17 +112,17 @@ std::optional<double> ProcessMetrics::GetCpuUsage(DWORD pid)
     if (!GetProcessTimes(s.hProcess,&c,&e,&k,&u))
         return std::nullopt;
 
-    uint64_t cpu  = FileTimeToUint(k)+FileTimeToUint(u);
-    uint64_t wall = FileTimeToUint(nowFt);
+    const uint64_t cpu  = FileTimeToUint(k)+FileTimeToUint(u);
+    const uint64_t wall = FileTimeToUint(nowFt);
 
-    if (s.wallTime == 0) {              // first call → prime snapshot
+    if (s.wallTime == 0) {
         s.wallTime = wall;
         s.cpuTime  = cpu;
         return std::nullopt;
     }
 
-    uint64_t cpuDelta  = cpu  - s.cpuTime;
-    uint64_t wallDelta = wall - s.wallTime;
+    const uint64_t cpuDelta  = cpu  - s.cpuTime;
+    const uint64_t wallDelta = wall - s.wallTime;
 
     s.cpuTime  = cpu;
     s.wallTime = wall;
@@ -136,13 +131,13 @@ std::optional<double> ProcessMetrics::GetCpuUsage(DWORD pid)
     return (cpuDelta / static_cast<double>(wallDelta)) * 100.0 / NumProcessors();
 }
 
-std::optional<size_t> ProcessMetrics::GetMemoryUsage(DWORD pid)
+std::optional<size_t> ProcessMetrics::GetMemoryUsage(const DWORD pid)
 {
-    HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    const HANDLE h = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_VM_READ, FALSE, pid);
     if (!h) return std::nullopt;
 
     PROCESS_MEMORY_COUNTERS_EX pmc;
-    bool ok = GetProcessMemoryInfo(h, reinterpret_cast<PPROCESS_MEMORY_COUNTERS>(&pmc), sizeof(pmc));
+    const bool ok = GetProcessMemoryInfo(h, reinterpret_cast<PPROCESS_MEMORY_COUNTERS>(&pmc), sizeof(pmc));
     CloseHandle(h);
     if (!ok) return std::nullopt;
     return static_cast<size_t>(pmc.WorkingSetSize);
@@ -174,8 +169,8 @@ std::optional<size_t> ProcessMetrics::GetDiskWriteBytesPerSec(DWORD pid)
 
 std::optional<size_t> ProcessMetrics::GetDiskIOBytesPerSec(DWORD pid)
 {
-    auto r = GetDiskReadBytesPerSec(pid);
-    auto w = GetDiskWriteBytesPerSec(pid);
+    const auto r = GetDiskReadBytesPerSec(pid);
+    const auto w = GetDiskWriteBytesPerSec(pid);
     if (r && w) return *r + *w;
     if (r)      return r;
     if (w)      return w;

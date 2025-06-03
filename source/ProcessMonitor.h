@@ -29,6 +29,7 @@ public:
 
 private:
     mutable std::shared_mutex processes_mutex_;
+    mutable std::mutex monitor_running_mutex_;
     std::unordered_map<DWORD, ProcessInfo> processes_;
     std::stop_source stop_source_;
     std::jthread monitor_thread_;

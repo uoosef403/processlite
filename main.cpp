@@ -175,6 +175,9 @@ private:
         message_handlers_[WM_APP + 104] = [this](const HWND hwnd, const WPARAM wp, const LPARAM lp) {
             return handleProcessListUpdate(hwnd, wp, lp);
         };
+        message_handlers_[WM_NOTIFY] = [this](const HWND hwnd, const WPARAM wp, const LPARAM lp) {
+            return handleWMNotify(hwnd, wp, lp);
+        };
     }
 
     // Message handlers
@@ -277,6 +280,32 @@ private:
         return 0;
     }
 
+    LRESULT handleWMNotify(HWND, WPARAM, const LPARAM lParam) const {
+        if (
+            const auto nm_hdr = reinterpret_cast<LPNMHDR>(lParam);
+            list_view_manager_ != nullptr &&
+            nm_hdr->hwndFrom == list_view_manager_->getHWND() &&
+            nm_hdr->code == LVN_ITEMCHANGED
+        ) {
+            // Only react if the item is selected
+            if (const auto *pListView = reinterpret_cast<NMLISTVIEW *>(lParam); pListView->uChanged & LVIF_STATE) {
+                if (pListView->uNewState & LVIS_SELECTED) {
+                    // Retrieve lParam which holds the PID
+                    LVITEMW item{};
+                    item.mask = LVIF_PARAM;
+                    item.iItem = pListView->iItem;
+
+                    if (ListView_GetItem(nm_hdr->hwndFrom, &item)) {
+                        const auto pid = static_cast<DWORD>(item.lParam);
+
+                        std::wcout << L"Selected PID: " << pid << std::endl;
+                    }
+                }
+            }
+        }
+        return 0;
+    }
+
     // WndProc implementation
     LRESULT WndProc(const HWND hwnd, const UINT msg, const WPARAM wParam, const LPARAM lParam) {
         if (const auto it = message_handlers_.find(msg); it != message_handlers_.end()) {
@@ -293,7 +322,11 @@ private:
                 MessageBoxW(hwnd, L"Button 1 clicked!", L"Info", MB_OK);
                 break;
             case 2:
-                MessageBoxW(hwnd, L"Button 2 clicked!", L"Info", MB_OK);
+                if (list_view_manager_ != nullptr) {
+                    if (const DWORD pid = list_view_manager_->getSelectedPID(); pid != 0) {
+                        KillProcessByPID(hwnd, pid);
+                    }
+                }
                 break;
             case 3:
                 PostQuitMessage(0); // Close the application
@@ -306,7 +339,7 @@ private:
 
 int WINAPI wWinMain(const HINSTANCE hInstance, HINSTANCE, PWSTR, const int nShowCmd) {
     AllocConsole();
-    FILE* f;
+    FILE *f;
     freopen_s(&f, "CONOUT$", "w", stdout);
     freopen_s(&f, "CONOUT$", "w", stderr);
 

@@ -24,7 +24,7 @@ ProcessMonitor::ProcessMonitor(TaskManager &taskManager, const HWND hMainWindow,
             ProcessMonitorScheduledUpdateTaskID,
             "Process Monitor Update", // Task name
             [this](const std::stop_token &st) { this->scheduledUpdateProcesses(st); },
-            1000ms
+            2000ms
         );
     } catch (...) {
         std::cerr << "Something went wrong when creating new task" << std::endl;
@@ -46,6 +46,13 @@ const ProcessInfo *ProcessMonitor::getProcessInfo(const DWORD pid) const {
 }
 
 void ProcessMonitor::scheduledUpdateProcesses(const std::stop_token &st) {
+    if (!monitor_running_mutex_.try_lock()) {
+        std::cerr << "Previous monitoring routine is still running...";
+        return;
+    }
+    monitor_running_mutex_.unlock();
+    std::lock_guard lck(monitor_running_mutex_);
+
     HandleWrapper hSnapshot(CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0));
     if (!hSnapshot.isValid()) {
         return;

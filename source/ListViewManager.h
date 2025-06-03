@@ -22,11 +22,15 @@ public:
 
     int getOrAddIconIndex(const std::wstring &path);
 
+    void setSelectedPID(DWORD pid);
+
+    [[nodiscard]] DWORD getSelectedPID() const;
 private:
     HWND hwnd_parent_;
     HWND hwnd_list_view_;
     HIMAGELIST image_list_ = nullptr;
     std::map<std::wstring, int> icon_cache_;
+    std::atomic<DWORD> selected_pid_{0};
 };
 
 #endif

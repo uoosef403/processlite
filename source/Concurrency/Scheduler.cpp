@@ -35,7 +35,6 @@ void Scheduler::scheduler_loop(const std::stop_token &st) const {
             }
 
             if (now >= task->next_execution) {
-                std::cout << "Executing task " << task->name <<std::endl;
                 const auto nextExecutionForThisTask = now + task->interval;
                 task_mgr_.updateTaskNextRunTime(task->id, nextExecutionForThisTask);
 

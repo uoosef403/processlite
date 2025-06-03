@@ -193,4 +193,40 @@ inline std::wstring GetMemoryLoadPercentage() {
     return L"Failed to retrieve memory information";
 }
 
+// Kill a process by PID, with confirmation
+inline bool KillProcessByPID(const HWND parentHwnd, const DWORD pid) {
+    // Ask the user
+    std::wstringstream ss;
+    ss << L"Are you sure you want to kill process with PID " << pid << L"?";
+
+    const int result = MessageBoxW(
+        parentHwnd,
+        ss.str().c_str(),
+        L"Confirm Termination",
+        MB_YESNO | MB_ICONWARNING | MB_DEFBUTTON2
+    );
+
+    if (result != IDYES)
+        return false;
+
+    // Try to open the process with terminate rights
+    const HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, pid);
+    if (!hProcess) {
+        MessageBoxW(parentHwnd, L"Failed to open process.", L"Error", MB_OK | MB_ICONERROR);
+        return false;
+    }
+
+    // Kill it
+    BOOL success = TerminateProcess(hProcess, 1);
+    CloseHandle(hProcess);
+
+    if (!success) {
+        MessageBoxW(parentHwnd, L"Failed to terminate process.", L"Error", MB_OK | MB_ICONERROR);
+        return false;
+    }
+
+    MessageBoxW(parentHwnd, L"Process terminated successfully.", L"Success", MB_OK | MB_ICONINFORMATION);
+    return true;
+}
+
 #endif
